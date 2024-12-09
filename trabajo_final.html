@@ -357,10 +357,22 @@ display: none;
 </div>
 
 
+<div id="verificación-de-paquetes-y-datos" class="section level2">
+<h2>0. Verificación de Paquetes y Datos</h2>
+<pre class="r"><code># Verificar la existencia del archivo de datos
+archivo_datos &lt;- &quot;20240516_enssex_data.rdata&quot;
+if (!file.exists(archivo_datos)) {
+  stop(&quot;Error: No se encuentra el archivo de datos &#39;&quot;, archivo_datos, 
+       &quot;&#39; en el directorio de trabajo actual: &quot;, getwd())
+}
+
+# Mostrar información del entorno
+cat(&quot;\nDirectorio de trabajo actual:&quot;, getwd(), &quot;\n&quot;)</code></pre>
 <pre><code>## 
 ## Directorio de trabajo actual: /Users/felipecarrasco/Library/Mobile Documents/com~apple~CloudDocs/Magíster/MAGISTER/ASIGNATURAS/II SEMESTRE/EPIDEMiOLOGIA II/Clases_profesor_Amaru_aguero/Trabajo/Proyecto_trabajo</code></pre>
 <pre class="r"><code>cat(&quot;Archivo de datos encontrado:&quot;, archivo_datos, &quot;\n&quot;)</code></pre>
 <pre><code>## Archivo de datos encontrado: 20240516_enssex_data.rdata</code></pre>
+</div>
 <div id="definición-de-variables" class="section level2">
 <h2>1. Definición de Variables</h2>
 <pre class="r"><code># Definir la variable dependiente
@@ -1258,7 +1270,7 @@ knitr::kable(
     Frecuencia = as.numeric(tabla_test),
     Porcentaje = round(as.numeric(prop_test), 2)
   ),
-  caption = &quot;Distribuci��n de clases en conjunto de prueba&quot;,
+  caption = &quot;Distribución de clases en conjunto de prueba&quot;,
   col.names = c(&quot;Conjunto&quot;, &quot;Categoría&quot;, &quot;Frecuencia&quot;, &quot;Porcentaje (%)&quot;),
   align = c(&quot;l&quot;, &quot;l&quot;, &quot;r&quot;, &quot;r&quot;)
 )</code></pre>
@@ -1598,52 +1610,33 @@ tryCatch({
   pred_prob_rf &lt;- predict(rf_model, datos_prueba, type = &quot;prob&quot;)
   pred_prob_log &lt;- predict(rl_model, datos_prueba, type = &quot;prob&quot;)
   
-  # Convertir la variable respuesta a numérica (0 para &quot;No&quot;, 1 para &quot;Si&quot;)
-  respuesta_numerica &lt;- ifelse(datos_prueba$depresion == &quot;Si&quot;, 1, 0)
-  
-  # Calcular ROC para Random Forest
-  roc_rf &lt;- roc(respuesta_numerica, pred_prob_rf[,&quot;Si&quot;],
-                levels = c(0, 1),
-                direction = &quot;&lt;&quot;,
-                quiet = TRUE)
-  
-  # Calcular ROC para Regresión Logística
-  roc_log &lt;- roc(respuesta_numerica, pred_prob_log[,&quot;Si&quot;],
-                 levels = c(0, 1),
-                 direction = &quot;&lt;&quot;,
-                 quiet = TRUE)
-  
-  # Calcular AUC
+  # Para Random Forest
+  roc_rf &lt;- roc(datos_prueba$depresion, pred_prob_rf[,&quot;Si&quot;])
   auc_rf &lt;- auc(roc_rf)
+  
+  # Para Regresión Logística
+  roc_log &lt;- roc(datos_prueba$depresion, pred_prob_log[,&quot;Si&quot;])
   auc_log &lt;- auc(roc_log)
   
-  # Configurar el gráfico
-  par(pty = &quot;s&quot;)  # Hacer el gráfico cuadrado
-  
-  # Graficar la curva ROC de Random Forest
-  plot(roc_rf,
-       main = &quot;Comparación de Curvas ROC&quot;,
-       col = &quot;blue&quot;,
+  # Graficar curvas ROC
+  plot(roc_rf, main = &quot;Curvas ROC&quot;, 
+       col = &quot;blue&quot;, 
        lwd = 2,
-       legacy.axes = TRUE,
-       xlab = &quot;1 - Especificidad&quot;,
-       ylab = &quot;Sensibilidad&quot;)
-  
-  # Agregar la curva ROC de Regresión Logística
+       legacy.axes = TRUE)
   lines(roc_log, col = &quot;red&quot;, lwd = 2)
   
-  # Agregar línea de referencia
-  abline(a = 0, b = 1, lty = 2, col = &quot;gray&quot;)
-  
   # Agregar leyenda
-  legend(&quot;bottomright&quot;,
-         legend = c(
-           paste(&quot;Random Forest (AUC =&quot;, round(auc_rf, 3), &quot;)&quot;),
-           paste(&quot;Reg. Logística (AUC =&quot;, round(auc_log, 3), &quot;)&quot;)
-         ),
-         col = c(&quot;blue&quot;, &quot;red&quot;),
-         lwd = 2,
-         bty = &quot;n&quot;)
+  legend(&quot;bottomright&quot;, 
+         legend = c(paste(&quot;Random Forest (AUC =&quot;, round(auc_rf, 3), &quot;)&quot;),
+                   paste(&quot;Reg. Logística (AUC =&quot;, round(auc_log, 3), &quot;)&quot;)),
+         col = c(&quot;blue&quot;, &quot;red&quot;), 
+         lwd = 2)
+  
+  # Agregar título y etiquetas
+  title(main = &quot;Comparación de Curvas ROC&quot;,
+        sub = &quot;Random Forest vs Regresión Logística&quot;,
+        xlab = &quot;Tasa de Falsos Positivos (1 - Especificidad)&quot;,
+        ylab = &quot;Tasa de Verdaderos Positivos (Sensibilidad)&quot;)
   
   # Imprimir valores de AUC
   cat(&quot;\nÁrea Bajo la Curva (AUC):\n&quot;)
@@ -1656,12 +1649,6 @@ tryCatch({
   cat(&quot;\nVerificando objetos disponibles:\n&quot;)
   cat(&quot;Dimensiones datos_prueba:&quot;, dim(datos_prueba), &quot;\n&quot;)
   cat(&quot;Clases en datos_prueba$depresion:&quot;, levels(datos_prueba$depresion), &quot;\n&quot;)
-  cat(&quot;Primeros valores de datos_prueba$depresion:\n&quot;)
-  print(head(datos_prueba$depresion))
-  cat(&quot;\nPrimeros valores de predicción RF:\n&quot;)
-  print(head(pred_prob_rf))
-  cat(&quot;\nPrimeros valores de predicción LR:\n&quot;)
-  print(head(pred_prob_log))
 })</code></pre>
 <pre><code>## Error en el cálculo de ROC/AUC:
 ## &lt;simpleError in binaryChecks(actual, &quot;auc&quot;): auc only works for binary outcomes at this time&gt;
