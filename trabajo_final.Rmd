@@ -1,7 +1,7 @@
 ---
 title: "Análisis Epidemiológico ENSSEX"
 author: "Felipe Carrasco"
-date: "2024-12-09"
+date: "`r Sys.Date()`"
 output:
   html_document:
     theme: cosmo
@@ -10,23 +10,35 @@ output:
     toc_float:
       collapsed: false
       smooth_scroll: true
+    toc_depth: 3
+    number_sections: true
     code_folding: show
     df_print: paged
     fig_width: 10
     fig_height: 6
     fig_caption: true
-    number_sections: true
     self_contained: true
+    includes:
+      in_header: 
+        - <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        - <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = 'center',
+  out.width = '100%',
+  dpi = 300,
+  fig.path = 'figure/',
+  dev = 'png'
+)
 
+# Crear directorio para figuras si no existe
+dir.create('figure/', showWarnings = FALSE)
 
-
-
-## 0. Verificación de Paquetes y Datos
-
-
-``` r
 # Verificar la existencia del archivo de datos
 archivo_datos <- "20240516_enssex_data.rdata"
 if (!file.exists(archivo_datos)) {
@@ -1355,7 +1367,7 @@ knitr::kable(
     Frecuencia = as.numeric(tabla_test),
     Porcentaje = round(as.numeric(prop_test), 2)
   ),
-  caption = "Distribución de clases en conjunto de prueba",
+  caption = "Distribuci��n de clases en conjunto de prueba",
   col.names = c("Conjunto", "Categoría", "Frecuencia", "Porcentaje (%)"),
   align = c("l", "l", "r", "r")
 )
@@ -1738,33 +1750,52 @@ tryCatch({
   pred_prob_rf <- predict(rf_model, datos_prueba, type = "prob")
   pred_prob_log <- predict(rl_model, datos_prueba, type = "prob")
   
-  # Para Random Forest
-  roc_rf <- roc(datos_prueba$depresion, pred_prob_rf[,"Si"])
-  auc_rf <- auc(roc_rf)
+  # Convertir la variable respuesta a numérica (0 para "No", 1 para "Si")
+  respuesta_numerica <- ifelse(datos_prueba$depresion == "Si", 1, 0)
   
-  # Para Regresión Logística
-  roc_log <- roc(datos_prueba$depresion, pred_prob_log[,"Si"])
+  # Calcular ROC para Random Forest
+  roc_rf <- roc(respuesta_numerica, pred_prob_rf[,"Si"],
+                levels = c(0, 1),
+                direction = "<",
+                quiet = TRUE)
+  
+  # Calcular ROC para Regresión Logística
+  roc_log <- roc(respuesta_numerica, pred_prob_log[,"Si"],
+                 levels = c(0, 1),
+                 direction = "<",
+                 quiet = TRUE)
+  
+  # Calcular AUC
+  auc_rf <- auc(roc_rf)
   auc_log <- auc(roc_log)
   
-  # Graficar curvas ROC
-  plot(roc_rf, main = "Curvas ROC", 
-       col = "blue", 
+  # Configurar el gráfico
+  par(pty = "s")  # Hacer el gráfico cuadrado
+  
+  # Graficar la curva ROC de Random Forest
+  plot(roc_rf,
+       main = "Comparación de Curvas ROC",
+       col = "blue",
        lwd = 2,
-       legacy.axes = TRUE)
+       legacy.axes = TRUE,
+       xlab = "1 - Especificidad",
+       ylab = "Sensibilidad")
+  
+  # Agregar la curva ROC de Regresión Logística
   lines(roc_log, col = "red", lwd = 2)
   
-  # Agregar leyenda
-  legend("bottomright", 
-         legend = c(paste("Random Forest (AUC =", round(auc_rf, 3), ")"),
-                   paste("Reg. Logística (AUC =", round(auc_log, 3), ")")),
-         col = c("blue", "red"), 
-         lwd = 2)
+  # Agregar línea de referencia
+  abline(a = 0, b = 1, lty = 2, col = "gray")
   
-  # Agregar título y etiquetas
-  title(main = "Comparación de Curvas ROC",
-        sub = "Random Forest vs Regresión Logística",
-        xlab = "Tasa de Falsos Positivos (1 - Especificidad)",
-        ylab = "Tasa de Verdaderos Positivos (Sensibilidad)")
+  # Agregar leyenda
+  legend("bottomright",
+         legend = c(
+           paste("Random Forest (AUC =", round(auc_rf, 3), ")"),
+           paste("Reg. Logística (AUC =", round(auc_log, 3), ")")
+         ),
+         col = c("blue", "red"),
+         lwd = 2,
+         bty = "n")
   
   # Imprimir valores de AUC
   cat("\nÁrea Bajo la Curva (AUC):\n")
@@ -1777,6 +1808,12 @@ tryCatch({
   cat("\nVerificando objetos disponibles:\n")
   cat("Dimensiones datos_prueba:", dim(datos_prueba), "\n")
   cat("Clases en datos_prueba$depresion:", levels(datos_prueba$depresion), "\n")
+  cat("Primeros valores de datos_prueba$depresion:\n")
+  print(head(datos_prueba$depresion))
+  cat("\nPrimeros valores de predicción RF:\n")
+  print(head(pred_prob_rf))
+  cat("\nPrimeros valores de predicción LR:\n")
+  print(head(pred_prob_log))
 })
 ```
 
