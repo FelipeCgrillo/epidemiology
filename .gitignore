@@ -1,0 +1,24 @@
+# R specific
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# RStudio specific
+*.Rproj
+
+# Temporary files
+*.knit.md
+*.utf8.md
+*.log
+
+# Data files (si son confidenciales)
+# *.rdata
+# *.csv
+
+# Output files
+# *.pdf  # Descomenta si no quieres incluir los PDFs
+
+# OS specific
+.DS_Store
+Thumbs.db
